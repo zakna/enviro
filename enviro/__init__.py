@@ -262,13 +262,20 @@ def sync_clock_from_ntp():
   from phew import ntp
   if not connect_to_wifi():
     return False
-  #TODO Fetch only does one attempt. Can also optionally set Pico RTC (do we want this?)
-  timestamp = ntp.fetch()
+  # TODO Fetch only does one attempt. Can also optionally set Pico RTC (do we want this?)
+  attempts = 0
+  timestamp = None
+  while attempts < 3 and not timestamp:
+    timestamp = ntp.fetch()
+    attempts += 1
+    if not timestamp:
+      time.sleep(10)
+
   if not timestamp:
     logging.error("  - failed to fetch time from ntp server")
-    return False  
+    return False
 
-  # fixes an issue where sometimes the RTC would not pick up the new time
+    # fixes an issue where sometimes the RTC would not pick up the new time
   i2c.writeto_mem(0x51, 0x00, b'\x10') # reset the rtc so we can change the time
   rtc.datetime(timestamp) # set the time on the rtc chip
   i2c.writeto_mem(0x51, 0x00, b'\x00') # ensure rtc is running
